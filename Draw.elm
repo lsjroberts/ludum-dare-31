@@ -7,7 +7,7 @@ module Draw where
 type Sprite = { shape:Form, size:Int, rot:Float }
 
 player : Sprite
-player = { shape = filled green (ngon 5 10)
+player = { shape = filled green (ngon 5 15)
          , size = 10
          , rot = 0 }
 
