@@ -1,10 +1,6 @@
-module Input where
+module GameInput where
 
 import Keyboard
-
-{-- Input ---------------------------------------------------------------------
-
-------------------------------------------------------------------------------}
 
 type Direction = { x:Int, y:Int }
 type UserInput = { dir:Direction }
