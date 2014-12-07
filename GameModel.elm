@@ -8,6 +8,7 @@ import GameEnemies as GameEnemies
 type Position = { x:Float, y:Float }
 type Velocity = { vx:Float, vy:Float }
 type Rotation = { angle:Float, speed:Float, vel:Float, accel:Float, deccel:Float }
+type Gun = { firing:Bool, fireRate:Float, timeSince:Float }
 
 type Actor = { pos:Position
              , vel:Velocity
@@ -15,7 +16,8 @@ type Actor = { pos:Position
              , speed:Float
              , accel:Float
              , deccel:Float
-             , spr:GameDraw.Sprite }
+             , spr:GameDraw.Sprite
+             , gun:Gun }
 type Player = Actor
 type Enemy = Actor
 type Bullet = Actor
@@ -39,7 +41,8 @@ createActor x y spr =
     , speed    = 0
     , accel    = 0
     , deccel   = 0
-    , spr      = spr }
+    , spr      = spr
+    , gun      = { firing = False, fireRate = 0, timeSince = 0 } }
 
 createPlayer : Float -> Float -> Player
 createPlayer x y =
@@ -51,7 +54,10 @@ createPlayer x y =
                            , deccel = pi / 20 }
                , speed  <- 200
                , accel  <- 40
-               , deccel <- 5 }
+               , deccel <- 5
+               , gun    <- { firing = False
+                           , fireRate = 12
+                           , timeSince = 0 } }
 
 createEnemy : Float -> Float -> Enemy
 createEnemy x y =

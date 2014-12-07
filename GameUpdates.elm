@@ -73,17 +73,45 @@ rotateActor t dir ({rot} as actor) =
 --    player
     --sampleOn (fps 3) GameModel.createPlayerBullet
 
+fireGun : GameModel.Gun -> GameModel.Gun
+fireGun gun =
+    { gun | timeSince <- 0 }
+
+reloadGun : Time -> GameModel.Gun -> GameModel.Gun
+reloadGun t gun =
+    let timeSince' = gun.timeSince + t
+    in { gun | timeSince <- timeSince' }
+
+holdFire : GameModel.Actor -> GameModel.Actor
+holdFire ({gun} as actor) =
+    let gun' = { gun | firing <- False }
+    in { actor | gun <- gun' }
+
+stepGun : Time -> GameModel.Actor -> GameModel.Actor
+stepGun t ({gun} as actor) =
+    if gun.timeSince > (1/gun.fireRate) then { actor | gun <- fireGun gun }
+                                        else { actor | gun <- reloadGun t gun }
+
+stepPlayerGun : Time -> Bool -> GameModel.Actor -> GameModel.Actor
+stepPlayerGun t fire ({gun} as actor) =
+    let gun' = { gun | firing <- fire }
+    in if fire then stepGun t { actor | gun <- gun' }
+               else { actor | gun <- gun' }
+
 stepPlayer : Time -> GameInput.UserInput -> GameModel.Player -> GameModel.Player
 stepPlayer t input player =
     player |> moveActor t input.dir
            |> rotateActor t input.dir
+           |> stepPlayerGun t input.fire1
 
 stepPlayerBullets : Time -> GameInput.UserInput -> GameModel.Player -> [GameModel.PlayerBullet] -> [GameModel.PlayerBullet]
-stepPlayerBullets t input player bullets =
+stepPlayerBullets t input ({gun} as player) bullets =
     bullets |> map (\bullet -> bullet |> moveActor t {x=0,y=0}
                                       |> rotateActor t {x=0,y=0} )
             |> filter onCanvas
-            |> (++) (player |> GameModel.createPlayerBullets)
+            |> (++) (if gun.firing && gun.timeSince == 0
+                        then player |> GameModel.createPlayerBullets
+                        else [])
 {--
 stepEnemy : Time -> GameModel.Enemy -> GameModel.Enemy
 stepEnemy t enemy =
