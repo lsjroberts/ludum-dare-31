@@ -18,19 +18,25 @@ type Actor = { pos:Position
              , accel:Float
              , deccel:Float
              , spr:GameDraw.Sprite
-             , gun:Gun }
+             , gun:Gun
+             , lives:Int }
 type Player = Actor
 type Enemy = Actor
 type Bullet = Actor
 type EnemyGroup = { enemies:[Enemy]
                   , formation:GameEnemies.Formation
-                  , movementPath:GameEnemies.MovementPath
-                  , pos:Position }
+                  , pos:Position
+                  , vel:Velocity }
+type UI = { lives:[Actor] }
 
-type GameState = { player:Player
+data State = Play | Pause | Won | Lost
+
+type GameState = { state:State
+                 , player:Player
                  , playerBullets:[Bullet]
                  , enemies:[EnemyGroup]
-                 , enemyBullets:[Bullet] }
+                 , enemyBullets:[Bullet]
+                 , ui:UI }
 
 (gameWidth, gameHeight) = (800, 600)
 (halfWidth, halfHeight) = (400, 300)
@@ -44,7 +50,8 @@ createActor x y spr =
     , accel    = 0
     , deccel   = 0
     , spr      = spr
-    , gun      = { firing = False, fireRate = 0, timeSince = 0 } }
+    , gun      = { firing = False, fireRate = 0, timeSince = 0 }
+    , lives    = 1 }
 
 createPlayer : Float -> Float -> Player
 createPlayer x y =
@@ -59,29 +66,35 @@ createPlayer x y =
                , deccel <- 5
                , gun    <- { firing = False
                            , fireRate = 12
-                           , timeSince = 0 } }
+                           , timeSince = 0 }
+               , lives  <- 5 }
 
-createEnemy : Float -> Float -> Enemy
-createEnemy x y =
+createEnemy : Float -> Float -> Float -> Enemy
+createEnemy x y timeSinceOffset =
     let actor = createActor x y GameDraw.enemy1
-    in { actor | speed  <- 100
+    in { actor | rot    <- { angle  = 0
+                           , speed  = pi / 4
+                           , vel    = pi / 10
+                           , accel  = pi / 14
+                           , deccel = pi / 20 }
+               , speed  <- 100
                , accel  <- 40
                , deccel <- 5
                , gun    <- { firing = True
-                           , fireRate = 0.534 --1.067 --2.134
-                           , timeSince = 0 } }
+                           , fireRate = 0.534 --0.534 --1.067 --2.134
+                           , timeSince = timeSinceOffset } }
 
-createEnemiesInFormation : Float -> Float -> GameEnemies.Formation -> [Enemy]
-createEnemiesInFormation x y formation =
-    formation |> map (\pos -> createEnemy (x + pos.x) (y + pos.y))
+createEnemiesInFormation : Float -> Float -> Float -> GameEnemies.Formation -> [Enemy]
+createEnemiesInFormation x y timeSinceOffset formation =
+    formation |> map (\pos -> createEnemy (x + pos.x) (y + pos.y) timeSinceOffset)
 
-createEnemiesInGroup : Float -> Float -> (GameEnemies.Formation, GameEnemies.MovementPath) -> EnemyGroup
-createEnemiesInGroup x y (formation', movementPath') =
-    let enemies' = formation' |> createEnemiesInFormation x y
+createEnemiesInGroup : Position -> Velocity -> Float -> GameEnemies.Formation -> EnemyGroup
+createEnemiesInGroup pos' vel' timeSinceOffset formation' =
+    let enemies' = formation' |> createEnemiesInFormation pos'.x pos'.y timeSinceOffset
     in { enemies = enemies'
        , formation = formation'
-       , pos = { x = x, y = y }
-       , movementPath = movementPath' }
+       , pos = pos'
+       , vel = vel' }
 
 setActorBulletAngle : Float -> Bullet -> Bullet
 setActorBulletAngle angle' ({rot} as bullet) =
@@ -115,8 +128,24 @@ createEnemyBullets : Enemy -> [Bullet]
 createEnemyBullets enemy =
     createActorBullets enemy (GameDraw.enemyBullet1 enemy) 300
 
+createPlayerLivesUI : Int -> [Actor]
+createPlayerLivesUI num =
+    let (x,y) = (-halfWidth+10,halfHeight-10)
+        step = 60
+    in [1..num] |> map (\n -> createActor ((toFloat x) + (toFloat (n-1)) * step)
+                                          (toFloat y)
+                                          GameDraw.playerLife )
+
 defaultGame : GameState
-defaultGame = { player = createPlayer 0 0
-              , playerBullets = []
-              , enemies = [ createEnemiesInGroup -200 200 <| GameEnemies.generate 1 ]
-              , enemyBullets = [] }
+defaultGame =
+    let player' = createPlayer 0 0
+    in { state = Play
+       , player = player'
+       , playerBullets = []
+       , enemies = [ createEnemiesInGroup {x=-200,y= 200} {vx= 0.3,vy= 0.3} 0   <| GameEnemies.generate 1 40
+                   , createEnemiesInGroup {x=-400,y= 300} {vx=-0.3,vy= 0.3} 0.5 <| GameEnemies.generate 1 30
+                   , createEnemiesInGroup {x= 100,y=-200} {vx= 0.2,vy=-0.7} 1   <| GameEnemies.generate 1 60
+                   , createEnemiesInGroup {x= 300,y= 200} {vx= 0.6,vy= 0.1} 1.5 <| GameEnemies.generate 1 40
+                   , createEnemiesInGroup {x=-200,y=-200} {vx= 0.3,vy=-0.3} 2   <| GameEnemies.generate 1 50 ]
+       , enemyBullets = []
+       , ui = { lives = createPlayerLivesUI player'.lives } }
