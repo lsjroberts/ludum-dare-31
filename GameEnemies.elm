@@ -23,8 +23,10 @@ spiralFormation =
     []
 
 --linearPath : Float -> Float -> Float -> MovementPath
-linearPath m x c =
+linearPath grad = --{t,speed,pos}
     []
+    --{ pos | x <- pos.x + speed
+          --, y <- pos.y + speed }
 
 --createEnemyGroup : Formation -> MovementPath -> [Enemy]
 createGroup formation movementPath =
@@ -33,6 +35,6 @@ createGroup formation movementPath =
 generate : Int -> (Formation, MovementPath)
 generate difficulty = -- add seed here
     let formation' = squareFormation
-        movementPath' = linearPath 0.5 0 0
+        movementPath' = linearPath (pi/2 - pi/4)
     in ( formation'
        , movementPath' )

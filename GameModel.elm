@@ -6,6 +6,7 @@ import GameDraw as GameDraw
 import GameEnemies as GameEnemies
 
 type Position = { x:Float, y:Float }
+type Direction = { x:Float, y:Float }
 type Velocity = { vx:Float, vy:Float }
 type Rotation = { angle:Float, speed:Float, vel:Float, accel:Float, deccel:Float }
 type Gun = { firing:Bool, fireRate:Float, timeSince:Float }
@@ -21,14 +22,15 @@ type Actor = { pos:Position
 type Player = Actor
 type Enemy = Actor
 type Bullet = Actor
-type PlayerBullet = Bullet
 type EnemyGroup = { enemies:[Enemy]
                   , formation:GameEnemies.Formation
-                  , movementPath:GameEnemies.MovementPath }
+                  , movementPath:GameEnemies.MovementPath
+                  , pos:Position }
 
 type GameState = { player:Player
-                 , playerBullets:[PlayerBullet]
-                 , enemies:[EnemyGroup] }
+                 , playerBullets:[Bullet]
+                 , enemies:[EnemyGroup]
+                 , enemyBullets:[Bullet] }
 
 (gameWidth, gameHeight) = (800, 600)
 (halfWidth, halfHeight) = (400, 300)
@@ -62,9 +64,12 @@ createPlayer x y =
 createEnemy : Float -> Float -> Enemy
 createEnemy x y =
     let actor = createActor x y GameDraw.enemy1
-    in { actor | speed <- 40
-               , accel <- 5
-               , deccel <- 5 }
+    in { actor | speed  <- 100
+               , accel  <- 40
+               , deccel <- 5
+               , gun    <- { firing = True
+                           , fireRate = 0.534 --1.067 --2.134
+                           , timeSince = 0 } }
 
 createEnemiesInFormation : Float -> Float -> GameEnemies.Formation -> [Enemy]
 createEnemiesInFormation x y formation =
@@ -75,6 +80,7 @@ createEnemiesInGroup x y (formation', movementPath') =
     let enemies' = formation' |> createEnemiesInFormation x y
     in { enemies = enemies'
        , formation = formation'
+       , pos = { x = x, y = y }
        , movementPath = movementPath' }
 
 setActorBulletAngle : Float -> Bullet -> Bullet
@@ -101,11 +107,16 @@ createActorBullets actor spr speed =
     let num = actor.spr.sides
     in [1..num] |> map(\n -> createActorBullet actor spr speed n)
 
-createPlayerBullets : Player -> [PlayerBullet]
-createPlayerBullets ({pos,vel,rot} as player) =
+createPlayerBullets : Player -> [Bullet]
+createPlayerBullets player =
     createActorBullets player GameDraw.playerBullet1 600
+
+createEnemyBullets : Enemy -> [Bullet]
+createEnemyBullets enemy =
+    createActorBullets enemy (GameDraw.enemyBullet1 enemy) 300
 
 defaultGame : GameState
 defaultGame = { player = createPlayer 0 0
               , playerBullets = []
-              , enemies = [ createEnemiesInGroup -200 200 <| GameEnemies.generate 1 ] }
+              , enemies = [ createEnemiesInGroup -200 200 <| GameEnemies.generate 1 ]
+              , enemyBullets = [] }

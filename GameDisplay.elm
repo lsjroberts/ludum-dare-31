@@ -26,10 +26,12 @@ displayEnemyGroups groups =
     groups |> concatMap (\group -> group.enemies |> displayActors)
 
 display : (Int,Int) -> GameModel.GameState -> Element
-display (w,h) ({player,playerBullets,enemies} as gameState) =
+display (w,h) ({player,playerBullets,enemies,enemyBullets} as gameState) =
     let displayedActors =
+            [ rect (toFloat w) (toFloat h) |> filled black ] ++
             displayEnemyGroups enemies ++
             displayActors playerBullets ++
+            displayActors enemyBullets ++
             [ displayActor player ]
     in container w h middle <| collage w h
         displayedActors
