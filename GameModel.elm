@@ -80,8 +80,6 @@ createActorBullets actor spr speed =
 createPlayerBullets : Player -> [PlayerBullet]
 createPlayerBullets ({pos,vel,rot} as player) =
     createActorBullets player GameDraw.playerBullet1 400
-    --let angles = map (\m -> rot.angle + pi*m/5) [1..5]
-    --in angles |> map (\angle' -> (updatePlayerBulletAngle angle' |> createPlayerBullet pos) )
 
 createEnemies : (GameEnemies.Formation, GameEnemies.MovementPath) -> EnemyGroup
 createEnemies (formation', movementPath') =
