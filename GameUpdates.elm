@@ -31,6 +31,18 @@ dist : GameModel.Position -> GameModel.Position -> Float
 dist pos pos' =
     sqrt <| (pos.x - pos'.x)^2 + (pos.y - pos'.y)^2
 
+unitVector : GameModel.Position -> GameModel.Position
+unitVector pos =
+    let m = sqrt <| pos.x^2 + pos.y^2
+    in { pos | x <- pos.x / m
+             , y <- pos.y / m }
+
+unitVectorTwoPoints : GameModel.Position -> GameModel.Position -> GameModel.Position
+unitVectorTwoPoints pos pos' =
+    let v = { x = pos.x - pos'.x
+            , y = pos.y - pos'.y }
+    in unitVector v
+
 collides : GameModel.Actor -> GameModel.Actor -> Bool
 collides actor actor' =
     if (dist actor.pos actor'.pos) < (toFloat actor.spr.size + toFloat actor'.spr.size) then True else False
@@ -118,9 +130,10 @@ stepPlayerGun t fire ({gun} as actor) =
                else { actor | gun <- gun' }
 
 stepPlayer : Time -> GameInput.UserInput -> [GameModel.Bullet] -> GameModel.Player -> GameModel.Player
-stepPlayer t ({dir} as input) enemyBullets player =
+stepPlayer t ({dir,rot} as input) enemyBullets player =
     let dir' = { dir | x <- toFloat dir.x
                      , y <- toFloat dir.y }
+        rot' = { x = toFloat rot, y = 0 }
     in player |> moveActor t dir'
               |> rotateActor t dir'
               |> stepPlayerGun t input.fire1
@@ -133,51 +146,66 @@ stepPlayerBullets t input ({gun} as player) bullets =
                         then player |> GameModel.createPlayerBullets
                         else [])
 
---getNextPathVelocity t movementPath actor =
---    let pos = movementPath t actor.pos
---    in { actor | vel <- { vx = }}
+killEnemy : [GameModel.Bullet] -> GameModel.Enemy -> GameModel.Enemy
+killEnemy playerBullets enemy =
+    if enemy |> collider playerBullets then { enemy | kill <- True }
+                                       else enemy
 
-getFormationVel : GameModel.EnemyGroup -> GameModel.Velocity
-getFormationVel ({pos,vel} as enemyGroup) =
-    if | near pos.y GameModel.halfHeight 40 -> { vel | vy <- -vel.vy }
-       | near pos.x GameModel.halfWidth  40 -> { vel | vx <- -vel.vx }
-       | otherwise -> vel
-
-stepEnemy : Time -> GameModel.Velocity -> GameModel.Enemy -> GameModel.Enemy
-stepEnemy t formationVel enemy =
-    let dir = { x = formationVel.vx
-              , y = formationVel.vy }
+stepEnemy : Time -> GameModel.Player -> [GameModel.Bullet] -> GameModel.Enemy -> GameModel.Enemy
+stepEnemy t player playerBullets enemy =
+    let dir = unitVectorTwoPoints player.pos enemy.pos
     in enemy |> moveActor t dir
              |> rotateActor t dir
              |> stepGun t
+             |> killEnemy playerBullets
 
-stepEnemyGroup : Time -> [GameModel.Bullet] -> GameModel.EnemyGroup -> GameModel.EnemyGroup
-stepEnemyGroup t playerBullets ({enemies,pos,vel} as enemyGroup) =
-    let formationVel = getFormationVel enemyGroup--movementPath {t=t,speed=speed,pos=pos}
-        bulletsCollider = collider playerBullets
-    in { enemyGroup | enemies <- enemies
-                        |> map(\enemy -> enemy
-                            |> stepEnemy t formationVel)
-                                |> filter (bulletsCollider >> not) -- no idea why I had to invert this??
-       }
+isActorKilled actor =
+    actor.kill
 
-stepEnemyGroups : Time-> [GameModel.Bullet] -> [GameModel.EnemyGroup] -> [GameModel.EnemyGroup]
-stepEnemyGroups t playerBullets groups =
-    groups |> map (\enemyGroup -> enemyGroup |> stepEnemyGroup t playerBullets)
+spawnEnemy : Float -> GameModel.Player -> [GameModel.Enemy] -> [GameModel.Enemy]
+spawnEnemy spawnCooldown player enemies =
+    --let spawnX = clamp -GameModel.halfWidth GameModel.halfWidth (player.pos.x + Random.range -300 300)
+        --spawnY = clamp -GameModel.halfHeight GameModel.halfHeight (player.pos.y + Random.range -300 300)
+    let spawnX = player.pos.x + 100
+        spawnY = player.pos.y + 100
+    in if spawnCooldown <= 0
+        then [GameModel.createEnemy spawnX spawnY] ++ enemies
+        else enemies
+
+stepEnemies : Time -> GameModel.Player -> [GameModel.Bullet] -> Float -> [GameModel.Enemy] -> [GameModel.Enemy]
+stepEnemies t player playerBullets spawnCooldown enemies =
+    enemies |> filter (isActorKilled >> not)
+            |> spawnEnemy spawnCooldown player
+            |> map (\enemy -> enemy |> stepEnemy t player playerBullets)
+
+moveEnemiesInGroup t player playerBullets spawnCooldown ({enemies} as enemyGroup) =
+    { enemyGroup | enemies <- enemies |> stepEnemies t player playerBullets spawnCooldown  }
+
+stepEnemyGroups t player playerBullets spawnCooldown groups =
+    groups |> map (\enemyGroup -> enemyGroup |> moveEnemiesInGroup t)
 
 fireEnemyBullets : Time -> GameModel.Enemy -> [GameModel.Bullet]
 fireEnemyBullets t ({gun} as enemy) =
     if gun.timeSince == 0 then GameModel.createEnemyBullets enemy
                           else []
 
-fireEnemyGroupBullets : Time -> GameModel.EnemyGroup -> [GameModel.Bullet]
-fireEnemyGroupBullets t ({enemies} as enemyGroup) =
-    enemies |> concatMap (\enemy -> enemy |> fireEnemyBullets t)
-
-stepEnemyGroupsBullets : Time -> [GameModel.EnemyGroup] -> [GameModel.Bullet] -> [GameModel.Bullet]
-stepEnemyGroupsBullets t enemyGroups bullets =
+stepEnemyBullets : Time -> [GameModel.Enemy] -> [GameModel.Bullet] -> [GameModel.Bullet]
+stepEnemyBullets t enemies bullets =
     bullets |> stepBullets t
-            |> (++) (enemyGroups |> concatMap (\enemyGroup -> enemyGroup |> fireEnemyGroupBullets t))
+            |> (++) (enemies |> concatMap (\enemy -> enemy |> fireEnemyBullets t))
+
+--addScoreForKill : GameModel.Enemy -> Int
+addScoreForKill enemy acc =
+    if enemy.kill then acc + 100 else acc
+
+stepScore : Time -> [GameModel.Enemy] -> Int -> Int
+stepScore t enemies score =
+    foldl addScoreForKill score enemies
+
+stepSpawnCooldown : Time -> Int -> Float -> Float
+stepSpawnCooldown t score spawnCooldown =
+    if spawnCooldown <= 0 then 1
+                          else spawnCooldown - t
 
 stepUI : Time -> GameModel.Player -> GameModel.UI -> GameModel.UI
 stepUI t player ui =
@@ -185,14 +213,18 @@ stepUI t player ui =
                                          else { ui | lives <- GameModel.createPlayerLivesUI player.lives }
 
 stepGame : GameInput.Input -> GameModel.GameState -> GameModel.GameState
-stepGame {timeDelta,userInput} ({player,playerBullets,enemies,enemyBullets,ui} as gameState) =
+stepGame {timeDelta,userInput} ({player,playerBullets,enemies,enemyBullets,score,spawnCooldown,ui} as gameState) =
     let player' = player |> stepPlayer timeDelta userInput enemyBullets
         playerBullets' = playerBullets |> stepPlayerBullets timeDelta userInput player
-        enemies' = enemies |> stepEnemyGroups timeDelta playerBullets
-        enemyBullets' = enemyBullets |> stepEnemyGroupsBullets timeDelta enemies
+        enemies' = enemies |> stepEnemies timeDelta player playerBullets spawnCooldown
+        enemyBullets' = enemyBullets |> stepEnemyBullets timeDelta enemies
+        score' = score |> stepScore timeDelta enemies
+        spawnCooldown' = spawnCooldown |> stepSpawnCooldown timeDelta score
         ui' = ui |> stepUI timeDelta player
     in { gameState | player        <- player'
                    , playerBullets <- playerBullets'
                    , enemies       <- enemies'
                    , enemyBullets  <- enemyBullets'
+                   , score         <- score'
+                   , spawnCooldown <- spawnCooldown'
                    , ui            <- ui' }

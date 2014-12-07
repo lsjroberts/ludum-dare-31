@@ -21,15 +21,11 @@ displayActors : [GameModel.Actor] -> [Form]
 displayActors actors =
     actors |> map (\actor -> actor |> displayActor)
 
-displayEnemyGroups : [GameModel.EnemyGroup] -> [Form]
-displayEnemyGroups groups =
-    groups |> concatMap (\group -> group.enemies |> displayActors)
-
 display : (Int,Int) -> GameModel.GameState -> Element
 display (w,h) ({player,playerBullets,enemies,enemyBullets,ui} as gameState) =
     let displayedActors =
             [ rect (toFloat w) (toFloat h) |> filled black ] ++
-            displayEnemyGroups enemies ++
+            displayActors enemies ++
             displayActors playerBullets ++
             displayActors enemyBullets ++
             displayActors ui.lives ++

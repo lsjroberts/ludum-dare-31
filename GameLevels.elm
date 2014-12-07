@@ -2,6 +2,8 @@ module GameLevels where
 
 import Random
 
+type Level = { name:String, enemies:[Enemy] }
+
 levelsSeed : String
 levelsSeed = "foo" -- generate once and save?
 
