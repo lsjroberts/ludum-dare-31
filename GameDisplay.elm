@@ -14,7 +14,7 @@ fixWeirdAngles ({spr,rot} as actor) shape =
 displayActor : GameModel.Actor -> Form
 displayActor ({spr,pos,rot} as actor) =
     spr.shape |> move (pos.x, pos.y)
-              --|> rotate (rot.angle)
+    --          |> rotate (rot.angle)
               |> fixWeirdAngles actor
 
 displayActors : [GameModel.Actor] -> [Form]

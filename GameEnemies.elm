@@ -1,12 +1,18 @@
 module GameEnemies where
 
-type Formation = [Position]
-type MovementPath = [Position]
-type EnemyGroup = { formation:Formation, movementPath:MovementPath }
+type Formation = [{ x:Float, y:Float }]
+type MovementPath = [{ x:Float, y:Float }]
 
 squareFormation : Formation
 squareFormation =
-    []
+    [ { x = -40, y = -40 }
+    , { x = -40, y = 0 }
+    , { x = -40, y = 40 }
+    , { x = 0,   y = 40 }
+    , { x = 40,  y = 40 }
+    , { x = 40,  y = 0 }
+    , { x = 40,  y = -40 }
+    , { x = 0,   y = -40 } ]
 
 circleFormation : Formation
 circleFormation =

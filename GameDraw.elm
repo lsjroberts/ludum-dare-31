@@ -7,11 +7,11 @@ enemyColour1 = red
 
 polySideLength : Float -> Float -> Float
 polySideLength sides radius =
-    2 * radius * (sin (180 / sides))
+    2 * radius * (sin (pi / sides))
 
 player : Sprite
 player =
-    let sides' = 3
+    let sides' = 5
         size'  = 15
     in { shape = filled playerColour (ngon sides' size')
        , sides = sides'

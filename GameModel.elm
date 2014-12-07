@@ -53,6 +53,24 @@ createPlayer x y =
                , accel  <- 40
                , deccel <- 5 }
 
+createEnemy : Float -> Float -> Enemy
+createEnemy x y =
+    let actor = createActor x y GameDraw.enemy1
+    in { actor | speed <- 40
+               , accel <- 5
+               , deccel <- 5 }
+
+createEnemiesInFormation : Float -> Float -> GameEnemies.Formation -> [Enemy]
+createEnemiesInFormation x y formation =
+    formation |> map (\pos -> createEnemy (x + pos.x) (y + pos.y))
+
+createEnemiesInGroup : Float -> Float -> (GameEnemies.Formation, GameEnemies.MovementPath) -> EnemyGroup
+createEnemiesInGroup x y (formation', movementPath') =
+    let enemies' = formation' |> createEnemiesInFormation x y
+    in { enemies = enemies'
+       , formation = formation'
+       , movementPath = movementPath' }
+
 setActorBulletAngle : Float -> Bullet -> Bullet
 setActorBulletAngle angle' ({rot} as bullet) =
     let rot' = { rot | angle <- angle' }
@@ -79,16 +97,9 @@ createActorBullets actor spr speed =
 
 createPlayerBullets : Player -> [PlayerBullet]
 createPlayerBullets ({pos,vel,rot} as player) =
-    createActorBullets player GameDraw.playerBullet1 400
-
-createEnemies : (GameEnemies.Formation, GameEnemies.MovementPath) -> EnemyGroup
-createEnemies (formation', movementPath') =
-    let enemies' = []
-    in { enemies = enemies'
-       , formation = formation'
-       , movementPath = movementPath' }
+    createActorBullets player GameDraw.playerBullet1 600
 
 defaultGame : GameState
 defaultGame = { player = createPlayer 0 0
               , playerBullets = []
-              , enemies = [ createEnemies <| GameEnemies.generate 1 ] }
+              , enemies = [ createEnemiesInGroup -200 200 <| GameEnemies.generate 1 ] }

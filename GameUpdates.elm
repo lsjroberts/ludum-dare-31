@@ -74,7 +74,7 @@ rotateActor t dir ({rot} as actor) =
     --sampleOn (fps 3) GameModel.createPlayerBullet
 
 stepPlayer : Time -> GameInput.UserInput -> GameModel.Player -> GameModel.Player
-stepPlayer t input ({pos,vel,rot} as player) =
+stepPlayer t input player =
     player |> moveActor t input.dir
            |> rotateActor t input.dir
 
@@ -84,10 +84,25 @@ stepPlayerBullets t input player bullets =
                                       |> rotateActor t {x=0,y=0} )
             |> filter onCanvas
             |> (++) (player |> GameModel.createPlayerBullets)
+{--
+stepEnemy : Time -> GameModel.Enemy -> GameModel.Enemy
+stepEnemy t enemy =
+    enemy |> moveActor t {x=2,y=2}
+
+stepEnemyGroup : Time -> GameModel.EnemyGroup -> GameModel.EnemyGroup
+stepEnemyGroup t ({enemies'} as enemyGroup) =
+    { enemyGroup | enemies <- enemies' |> map(\enemy -> enemy |> stepEnemy t) }
+
+stepEnemyGroups : Time -> [GameModel.EnemyGroup] -> [GameModel.EnemyGroup]
+stepEnemyGroups t groups =
+    groups |> map (\enemyGroup -> enemyGroup |> stepEnemyGroup t)
+--}
 
 stepGame : GameInput.Input -> GameModel.GameState -> GameModel.GameState
-stepGame {timeDelta,userInput} ({player,playerBullets} as gameState) =
+stepGame {timeDelta,userInput} ({player,playerBullets,enemies} as gameState) =
     let player'        = player |> stepPlayer timeDelta userInput
         playerBullets' = playerBullets |> stepPlayerBullets timeDelta userInput player
+        --enemies'       = enemies |> stepEnemyGroups timeDelta
     in { gameState | player        <- player'
-                   , playerBullets <- playerBullets' }
+                   , playerBullets <- playerBullets'
+                   , enemies       <- enemies }

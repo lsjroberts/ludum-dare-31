@@ -2,9 +2,6 @@ module GameLevels where
 
 import Random
 
-type Level = { name:String, difficulty:Int, seed:String }
-type Levels = [Level]
-
 levelsSeed : String
 levelsSeed = "foo" -- generate once and save?
 
