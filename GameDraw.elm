@@ -3,7 +3,7 @@ module GameDraw where
 type Sprite = { shape:Form, sides:Int, size:Int }
 
 playerColour = rgb 170 255 0
-playerColourLife = rgba 170 255 0 0.3
+playerColour2 = rgb 0 170 255
 enemyColour1 = rgb 255 170 0
 enemyColour2 = rgb 255 0 170
 
@@ -19,17 +19,23 @@ polySideLength sides radius =
 
 player : Sprite
 player =
-    let sides' = 5
+    let sides' = 6
         size'  = 15
     in { shape = ngon sides' size' |> filled playerColour --spritePolygon sides' size'
        , sides = sides'
        , size  = size' }
 
+playerSides : Int -> Sprite
+playerSides sides' =
+    let p = player
+    in { p | shape <- ngon sides' (toFloat p.size) |> filled playerColour
+           , sides <- sides' }
+
 playerLife : Sprite
 playerLife =
     let sides' = 5
         size'  = 15
-    in { shape = ngon sides' size' |> filled playerColourLife --spritePolygon sides' size'
+    in { shape = ngon sides' size' |> filled playerColour2 --spritePolygon sides' size'
        , sides = sides'
        , size  = size' }
 
@@ -37,7 +43,7 @@ enemy1 : Sprite
 enemy1 =
     let sides' = 3
         size'  = 10
-    in { shape = filled enemyColour1 (ngon sides' size')
+    in { shape = ngon sides' size' |> filled enemyColour1
        , sides = sides'
        , size  = size' }
 
@@ -58,6 +64,6 @@ playerBullet1 =
 --enemyBullet1 : Enemy -> Sprite
 enemyBullet1 enemy =
     let sideLen = (polySideLength (toFloat enemy.spr.sides) (toFloat enemy.spr.size))
-    in { shape = filled enemyColour1 (rect sideLen 2)
+    in { shape = circle (toFloat enemy.spr.sides + 4) |> filled enemyColour2 --shape = filled enemyColour1 (rect sideLen 2)
        , sides = 0
        , size  = 0 }

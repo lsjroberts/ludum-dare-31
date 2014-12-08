@@ -1,7 +1,5 @@
 module GameModel where
 
-import Random
-
 import GameDraw as GameDraw
 import GameEnemies as GameEnemies
 
@@ -20,7 +18,10 @@ type Actor = { pos:Position
              , spr:GameDraw.Sprite
              , gun:Gun
              , lives:Int
-             , kill:Bool }
+             , loseLifeCooldown:Float
+             , loseLifeCooldownMax:Float
+             , kill:Bool
+             , dir:Direction }
 type Player = Actor
 type Enemy = Actor
 type Bullet = Actor
@@ -32,6 +33,8 @@ type UI = { lives:[Actor] }
 type Level = { name:String, enemies:[Enemy] }
 type Levels = [Level]
 
+type Seeds = {a:Int,b:Int,c:Int,d:Int}
+
 data State = Play | Pause | Won | Lost
 
 type GameState = { state:State
@@ -41,7 +44,8 @@ type GameState = { state:State
                  , enemyBullets:[Bullet]
                  , score:Int
                  , spawnCooldown:Float
-                 , ui:UI }
+                 , ui:UI
+                 , seeds:Seeds }
 
 (gameWidth, gameHeight) = (800, 600)
 (halfWidth, halfHeight) = (400, 300)
@@ -57,7 +61,10 @@ createActor x y spr =
     , spr      = spr
     , gun      = { firing = False, fireRate = 0, timeSince = 0 }
     , lives    = 1
-    , kill     = False }
+    , loseLifeCooldown = 0
+    , loseLifeCooldownMax = 0.5
+    , kill     = False
+    , dir      = { x = 0, y = 0 } }
 
 createPlayer : Float -> Float -> Player
 createPlayer x y =
@@ -68,27 +75,32 @@ createPlayer x y =
                            , accel  = pi / 14
                            , deccel = pi / 20 }
                , speed  <- 200
-               , accel  <- 40
-               , deccel <- 5
+               , accel  <- 50
+               , deccel <- 50
                , gun    <- { firing = False
                            , fireRate = 12
                            , timeSince = 0 }
-               , lives  <- 3 }
+               , lives  <- 4 }
 
-createEnemy : Float -> Float -> Enemy
-createEnemy x y =
+createEnemy : Float -> Float -> Direction -> Enemy
+createEnemy x y formationDir' =
     let actor = createActor x y GameDraw.enemy1
     in { actor | rot    <- { angle  = 0
                            , speed  = pi / 4
                            , vel    = pi / 10
                            , accel  = pi / 14
                            , deccel = pi / 20 }
-               , speed  <- 40
-               , accel  <- 5
+               , speed  <- 80
+               , accel  <- 20
                , deccel <- 5
                , gun    <- { firing = True
                            , fireRate = 0.534 --0.534 --1.067 --2.134
-                           , timeSince = 1 } }
+                           , timeSince = 1 }
+               , dir    <- formationDir' }
+
+createEnemyBatch : GameEnemies.Formation -> Position -> Direction -> [Enemy]
+createEnemyBatch formation pos dir =
+    formation |> map (\pos' -> createEnemy (pos.x + pos'.x) (pos.y + pos'.y) dir)
 
 setActorBulletAngle : Float -> Bullet -> Bullet
 setActorBulletAngle angle' ({rot} as bullet) =
@@ -120,7 +132,7 @@ createPlayerBullets player =
 
 createEnemyBullets : Enemy -> [Bullet]
 createEnemyBullets enemy =
-    createActorBullets enemy (GameDraw.enemyBullet1 enemy) 300
+    createActorBullets enemy (GameDraw.enemyBullet1 enemy) 100
 
 createPlayerLivesUI : Int -> [Actor]
 createPlayerLivesUI num =
@@ -140,4 +152,5 @@ defaultGame =
        , enemyBullets = []
        , score = 0
        , spawnCooldown = 0
-       , ui = { lives = createPlayerLivesUI player'.lives } }
+       , ui = { lives = createPlayerLivesUI player'.lives }
+       , seeds = {a=1,b=2,c=3,d=4} }
